@@ -7,10 +7,12 @@
       }
     ],
     "routes": [
-      {
-        "src": "/webhook/fulfillment",
-        "dest": "api/webhook/fulfillment.js"
-      }
+        {
+            "src": "/webhook/fulfillment",
+            "methods": ["POST", "GET"],
+            "dest": "/api/webhook/fulfillment.js"
+          }
+          
     ]
   }
   
