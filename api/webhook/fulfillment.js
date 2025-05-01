@@ -1,5 +1,5 @@
 // fulfillment.js (Firestore via REST)
-const axios = require("axios").default;
+const axios = require("axios");
 const sgMail = require("@sendgrid/mail");
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
