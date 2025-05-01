@@ -3,7 +3,10 @@
     "builds": [
       {
         "src": "api/webhook/fulfillment.js",
-        "use": "@vercel/node"
+        "use": "@vercel/node",
+        "config": {
+          "externalDependencies": ["firebase-admin"]
+        }
       }
     ],
     "routes": [
