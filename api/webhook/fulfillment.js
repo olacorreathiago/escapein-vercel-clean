@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
   }
 
   const email = req.body.email;
-const order_id = req.body.order_id || req.body.name || req.body.id?.toString();
+  const order_id = req.body.order_id || req.body.name || req.body.id?.toString();
 
   if (!email || !order_id) {
     return res.status(400).send("Dados 'email' e 'order_id' ausentes no payload do Shopify.");
