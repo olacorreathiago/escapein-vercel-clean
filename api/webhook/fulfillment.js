@@ -23,10 +23,18 @@ module.exports = async (req, res) => {
     // Buscar uma chave disponível (sem filtro)
     const queryUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery`;
     const query = {
-      structuredQuery: {
-        from: [{ collectionId: collection }],
-        limit: 1
-      }
+        structuredQuery: {
+            from: [{ collectionId: collection }],
+            where: {
+              fieldFilter: {
+                field: { fieldPath: "utilizada" },
+                op: "EQUAL",
+                value: { booleanValue: false }
+              }
+            },
+            limit: 1
+          }
+          
     };
 
     const queryResponse = await fetch(queryUrl, {
