@@ -1,4 +1,4 @@
-// fulfillment.js (Firestore via REST usando node-fetch)
+// fulfillment.js (Firestore via REST usando node-fetch sem filtro na query)
 const fetch = require("node-fetch");
 const sgMail = require("@sendgrid/mail");
 
@@ -20,18 +20,11 @@ module.exports = async (req, res) => {
     const projectId = process.env.FIREBASE_PROJECT_ID;
     const collection = "keys";
 
-    // Buscar uma chave disponível
+    // Buscar uma chave disponível (sem filtro)
     const queryUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery`;
     const query = {
       structuredQuery: {
         from: [{ collectionId: collection }],
-        where: {
-          fieldFilter: {
-            field: { fieldPath: "utilizada" },
-            op: "EQUAL",
-            value: { booleanValue: false }
-          }
-        },
         limit: 1
       }
     };
@@ -41,7 +34,10 @@ module.exports = async (req, res) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(query),
     });
-    const queryData = await queryResponse.json();
+
+    const queryText = await queryResponse.text();
+    console.log("Resposta Firestore:", queryText);
+    const queryData = JSON.parse(queryText);
     const found = queryData.find((doc) => doc.document);
 
     if (!found) {
