@@ -1,24 +1,31 @@
 const admin = require("firebase-admin");
 const sgMail = require("@sendgrid/mail");
 
-const serviceAccount = {
-  type: process.env.FIREBASE_TYPE,
-  project_id: process.env.FIREBASE_PROJECT_ID,
-  private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-  private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-  client_email: process.env.FIREBASE_CLIENT_EMAIL,
-  client_id: process.env.FIREBASE_CLIENT_ID,
-  auth_uri: process.env.FIREBASE_AUTH_URI,
-  token_uri: process.env.FIREBASE_TOKEN_URI,
-  auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER,
-  client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
-};
+try {
+  const serviceAccount = {
+    type: process.env.FIREBASE_TYPE,
+    project_id: process.env.FIREBASE_PROJECT_ID,
+    private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+    private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+    client_email: process.env.FIREBASE_CLIENT_EMAIL,
+    client_id: process.env.FIREBASE_CLIENT_ID,
+    auth_uri: process.env.FIREBASE_AUTH_URI,
+    token_uri: process.env.FIREBASE_TOKEN_URI,
+    auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER,
+    client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
+  };
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+  }
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+} catch (error) {
+  console.error("Erro ao inicializar Firebase ou SendGrid:", error);
+  throw error; // impede deploy com erro silencioso
+}
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
@@ -31,7 +38,42 @@ module.exports = async (req, res) => {
       return res.status(400).send("Dados incompletos");
     }
 
-    // (Aqui vai a lógica de buscar a chave e enviar o email...)
+    const db = admin.firestore();
+    const snapshot = await db
+      .collection("keys")
+      .where("utilizada", "==", false)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      console.log("Sem chaves disponíveis.");
+      return res.status(404).send("Nenhuma chave disponível");
+    }
+
+    const doc = snapshot.docs[0];
+    const chave = doc.data().chave;
+
+    // Atualiza no Firebase
+    await doc.ref.update({
+      utilizada: true,
+      order_id,
+      email_cliente: email,
+    });
+
+    // Envia email
+    const msg = {
+      to: email,
+      from: process.env.EMAIL_FROM,
+      subject: "Sua chave Escape Game",
+      html: `
+        <p>Olá!</p>
+        <p>Sua chave: <strong>${chave}</strong></p>
+        <p>Usa-a em: <a href="https://app.escapein.pt">app.escapein.pt</a></p>
+      `,
+    };
+
+    await sgMail.send(msg);
+    console.log(`Email enviado para ${email} com chave ${chave}`);
 
     return res.status(200).send("Email enviado com sucesso");
   } catch (error) {
