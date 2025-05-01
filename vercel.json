@@ -5,7 +5,7 @@
         "src": "api/webhook/fulfillment.js",
         "use": "@vercel/node",
         "config": {
-          "externalDependencies": ["firebase-admin"]
+          "externalDependencies": ["firebase-admin", "@google-cloud/firestore"]
         }
       }
     ],

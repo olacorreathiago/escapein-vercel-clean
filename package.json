@@ -5,10 +5,11 @@
   "scripts": {
     "start": "node index.js"
   },
-  "dependencies": {
+    "dependencies": {
     "@sendgrid/mail": "^7.7.0",
     "firebase-admin": "11.5.0",
     "raw-body": "^3.0.0",
     "axios": "^1.6.7"
   }
+
 }
