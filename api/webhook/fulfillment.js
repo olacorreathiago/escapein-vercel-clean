@@ -5,15 +5,12 @@ const sgMail = require("@sendgrid/mail");
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 module.exports = async (req, res) => {
-
-    console.log("Payload recebido:", req.body);
-
   if (req.method !== "POST") {
     return res.status(405).send("Método não permitido");
   }
 
   const email = req.body.email;
-  const order_id = req.body.name || req.body.id?.toString();
+const order_id = req.body.order_id || req.body.name || req.body.id?.toString();
 
   if (!email || !order_id) {
     return res.status(400).send("Dados 'email' e 'order_id' ausentes no payload do Shopify.");
