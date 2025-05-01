@@ -9,7 +9,7 @@
     "routes": [
       {
         "src": "/webhook/fulfillment",
-        "dest": "/api/webhook/fulfillment.js"
+        "dest": "api/webhook/fulfillment.js"
       }
     ]
   }
