@@ -1,10 +1,11 @@
 {
     "version": 2,
-    "functions": {
-      "api/webhook/fulfillment.js": {
-        "runtime": "nodejs18.x"
+    "builds": [
+      {
+        "src": "api/webhook/fulfillment.js",
+        "use": "@vercel/node"
       }
-    },
+    ],
     "routes": [
       {
         "src": "/webhook/fulfillment",
