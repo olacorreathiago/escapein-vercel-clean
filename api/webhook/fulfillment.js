@@ -5,6 +5,9 @@ const sgMail = require("@sendgrid/mail");
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 module.exports = async (req, res) => {
+
+    console.log("Payload recebido:", req.body);
+
   if (req.method !== "POST") {
     return res.status(405).send("Método não permitido");
   }
