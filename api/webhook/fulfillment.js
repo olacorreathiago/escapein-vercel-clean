@@ -1,5 +1,5 @@
-// fulfillment.js (Firestore via REST)
-const axios = require("axios");
+// fulfillment.js (Firestore via REST usando node-fetch)
+const fetch = require("node-fetch");
 const sgMail = require("@sendgrid/mail");
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -36,8 +36,14 @@ module.exports = async (req, res) => {
       }
     };
 
-    const queryResponse = await axios.post(queryUrl, query);
-    const found = queryResponse.data.find((doc) => doc.document);
+    const queryResponse = await fetch(queryUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(query),
+    });
+    const queryData = await queryResponse.json();
+    const found = queryData.find((doc) => doc.document);
+
     if (!found) {
       return res.status(404).send("Nenhuma chave disponível.");
     }
@@ -55,7 +61,11 @@ module.exports = async (req, res) => {
       }
     };
 
-    await axios.patch(patchUrl, update);
+    await fetch(patchUrl, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(update),
+    });
 
     // Enviar email
     const msg = {
@@ -73,7 +83,7 @@ module.exports = async (req, res) => {
     console.log(`Email enviado para ${email} com a chave ${chave}`);
     return res.status(200).send("Chave atribuída e email enviado com sucesso.");
   } catch (error) {
-    console.error("Erro geral:", error.response?.data || error.message);
+    console.error("Erro geral:", error);
     return res.status(500).send("Erro interno");
   }
 };
