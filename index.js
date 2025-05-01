@@ -24,7 +24,7 @@ try {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 } catch (error) {
   console.error("Erro ao inicializar Firebase ou SendGrid:", error);
-  throw error; // impede deploy com erro silencioso
+  throw error;
 }
 
 module.exports = async (req, res) => {
@@ -34,8 +34,9 @@ module.exports = async (req, res) => {
 
   try {
     const { email, order_id } = req.body;
+
     if (!email || !order_id) {
-      return res.status(400).send("Dados incompletos");
+      return res.status(400).send("Dados 'email' e 'order_id' são obrigatórios.");
     }
 
     const db = admin.firestore();
@@ -46,38 +47,42 @@ module.exports = async (req, res) => {
       .get();
 
     if (snapshot.empty) {
-      console.log("Sem chaves disponíveis.");
-      return res.status(404).send("Nenhuma chave disponível");
+      console.warn("Nenhuma chave disponível no Firestore.");
+      return res.status(404).send("Nenhuma chave disponível.");
     }
 
     const doc = snapshot.docs[0];
     const chave = doc.data().chave;
 
-    // Atualiza no Firebase
     await doc.ref.update({
       utilizada: true,
       order_id,
       email_cliente: email,
     });
 
-    // Envia email
     const msg = {
       to: email,
       from: process.env.EMAIL_FROM,
-      subject: "Sua chave Escape Game",
+      subject: "A sua chave para o Escape Game",
       html: `
         <p>Olá!</p>
-        <p>Sua chave: <strong>${chave}</strong></p>
-        <p>Usa-a em: <a href="https://app.escapein.pt">app.escapein.pt</a></p>
+        <p>A sua chave é: <strong>${chave}</strong></p>
+        <p>Use-a em: <a href="https://app.escapein.pt">app.escapein.pt</a></p>
       `,
     };
 
-    await sgMail.send(msg);
-    console.log(`Email enviado para ${email} com chave ${chave}`);
-
-    return res.status(200).send("Email enviado com sucesso");
+    try {
+      await sgMail.send(msg);
+      console.log(`Email enviado para ${email} com a chave ${chave}`);
+      return res.status(200).send("Chave atribuída e email enviado com sucesso.");
+    } catch (sendError) {
+      console.error("Erro ao enviar e-mail via SendGrid:", sendError.response?.body || sendError.message);
+      return res
+        .status(500)
+        .send("Erro ao enviar e-mail: " + JSON.stringify(sendError.response?.body || sendError.message));
+    }
   } catch (error) {
-    console.error("Erro no webhook:", error);
-    return res.status(500).send("Erro interno");
+    console.error("Erro geral no webhook:", error);
+    return res.status(500).send("Erro interno: " + error.message);
   }
 };
