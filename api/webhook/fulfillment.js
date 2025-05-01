@@ -1,8 +1,39 @@
-// fulfillment.js (Firestore via REST usando node-fetch sem filtro na query)
+// fulfillment.js (Firestore via REST com autenticação JWT)
 const fetch = require("node-fetch");
 const sgMail = require("@sendgrid/mail");
+const jwt = require("jsonwebtoken");
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+async function generateAccessToken() {
+  const iat = Math.floor(Date.now() / 1000);
+  const exp = iat + 3600; // 1 hora
+
+  const payload = {
+    iss: process.env.FIREBASE_CLIENT_EMAIL,
+    scope: "https://www.googleapis.com/auth/datastore",
+    aud: "https://oauth2.googleapis.com/token",
+    iat,
+    exp
+  };
+
+  const token = jwt.sign(payload, process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"), {
+    algorithm: "RS256",
+    header: { kid: process.env.FIREBASE_PRIVATE_KEY_ID, typ: "JWT", alg: "RS256" }
+  });
+
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: token
+    })
+  });
+
+  const data = await response.json();
+  return data.access_token;
+}
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
@@ -17,35 +48,36 @@ module.exports = async (req, res) => {
   }
 
   try {
+    const accessToken = await generateAccessToken();
     const projectId = process.env.FIREBASE_PROJECT_ID;
     const collection = "keys";
 
-    // Buscar uma chave disponível (sem filtro)
+    // Buscar uma chave não utilizada
     const queryUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery`;
     const query = {
-        structuredQuery: {
-            from: [{ collectionId: collection }],
-            where: {
-              fieldFilter: {
-                field: { fieldPath: "utilizada" },
-                op: "EQUAL",
-                value: { booleanValue: false }
-              }
-            },
-            limit: 1
+      structuredQuery: {
+        from: [{ collectionId: collection }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: "utilizada" },
+            op: "EQUAL",
+            value: { booleanValue: false }
           }
-          
+        },
+        limit: 1
+      }
     };
 
     const queryResponse = await fetch(queryUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`
+      },
       body: JSON.stringify(query),
     });
 
-    const queryText = await queryResponse.text();
-    console.log("Resposta Firestore:", queryText);
-    const queryData = JSON.parse(queryText);
+    const queryData = await queryResponse.json();
     const found = queryData.find((doc) => doc.document);
 
     if (!found) {
@@ -67,7 +99,10 @@ module.exports = async (req, res) => {
 
     await fetch(patchUrl, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`
+      },
       body: JSON.stringify(update),
     });
 
