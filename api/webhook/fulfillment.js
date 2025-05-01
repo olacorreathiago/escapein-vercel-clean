@@ -33,11 +33,14 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { email, order_id } = req.body;
+    const email = req.body.email;
+    const order_id = req.body.name || req.body.id?.toString();
+
 
     if (!email || !order_id) {
-      return res.status(400).send("Dados 'email' e 'order_id' são obrigatórios.");
-    }
+        return res.status(400).send("Dados 'email' e 'order_id' ausentes no payload do Shopify.");
+      }
+      
 
     const db = admin.firestore();
     const snapshot = await db
