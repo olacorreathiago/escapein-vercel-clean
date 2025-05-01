@@ -1,9 +1,6 @@
 const admin = require("firebase-admin");
 const sgMail = require("@sendgrid/mail");
-const getRawBody = require("raw-body");
-const crypto = require("crypto");
 
-// Inicialização do Firebase e SendGrid
 try {
   const serviceAccount = {
     type: process.env.FIREBASE_TYPE,
@@ -30,60 +27,18 @@ try {
   throw error;
 }
 
-// Verificação HMAC do Shopify
-function verifyShopifyHMAC(req, rawBody) {
-  const hmacHeader = req.headers["x-shopify-hmac-sha256"];
-  if (!hmacHeader) return false;
-
-  const generatedHmac = crypto
-    .createHmac("sha256", process.env.SHOPIFY_WEBHOOK_SECRET)
-    .update(rawBody, "utf8")
-    .digest("base64");
-
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(hmacHeader, "utf8"),
-      Buffer.from(generatedHmac, "utf8")
-    );
-  } catch (err) {
-    return false;
-  }
-}
-
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
     return res.status(405).send("Método não permitido");
   }
 
-  let rawBody;
   try {
-    rawBody = await getRawBody(req);
-  } catch (err) {
-    console.error("Erro ao ler raw body:", err);
-    return res.status(400).send("Erro ao processar o corpo da requisição");
-  }
+    const { email, order_id } = req.body;
 
-  if (!verifyShopifyHMAC(req, rawBody)) {
-    console.warn("Webhook rejeitado: assinatura inválida.");
-    return res.status(401).send("Assinatura inválida");
-  }
+    if (!email || !order_id) {
+      return res.status(400).send("Dados 'email' e 'order_id' são obrigatórios.");
+    }
 
-  let body;
-  try {
-    body = JSON.parse(rawBody.toString("utf8"));
-  } catch (err) {
-    console.error("Erro ao parsear JSON:", err);
-    return res.status(400).send("JSON inválido");
-  }
-
-  const email = body.email;
-  const order_id = body.name || body.id?.toString();
-
-  if (!email || !order_id) {
-    return res.status(400).send("Dados 'email' e 'order_id' ausentes no payload do Shopify.");
-  }
-
-  try {
     const db = admin.firestore();
     const snapshot = await db
       .collection("keys")
