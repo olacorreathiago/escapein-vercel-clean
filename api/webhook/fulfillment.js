@@ -1,68 +1,63 @@
-const admin = require("firebase-admin");
+// fulfillment.js (Firestore via REST)
+const axios = require("axios");
 const sgMail = require("@sendgrid/mail");
 
-try {
-  const serviceAccount = {
-    type: process.env.FIREBASE_TYPE,
-    project_id: process.env.FIREBASE_PROJECT_ID,
-    private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-    private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-    client_email: process.env.FIREBASE_CLIENT_EMAIL,
-    client_id: process.env.FIREBASE_CLIENT_ID,
-    auth_uri: process.env.FIREBASE_AUTH_URI,
-    token_uri: process.env.FIREBASE_TOKEN_URI,
-    auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER,
-    client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
-  };
-
-  if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-  }
-
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-} catch (error) {
-  console.error("Erro ao inicializar Firebase ou SendGrid:", error);
-  throw error;
-}
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
     return res.status(405).send("Método não permitido");
   }
 
+  const email = req.body.email;
+  const order_id = req.body.name || req.body.id?.toString();
+
+  if (!email || !order_id) {
+    return res.status(400).send("Dados 'email' e 'order_id' ausentes no payload do Shopify.");
+  }
+
   try {
-    const email = req.body.email;
-    const order_id = req.body.name || req.body.id?.toString();
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const collection = "keys";
 
-
-    if (!email || !order_id) {
-        return res.status(400).send("Dados 'email' e 'order_id' ausentes no payload do Shopify.");
+    // Buscar uma chave disponível
+    const queryUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery`;
+    const query = {
+      structuredQuery: {
+        from: [{ collectionId: collection }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: "utilizada" },
+            op: "EQUAL",
+            value: { booleanValue: false }
+          }
+        },
+        limit: 1
       }
-      
+    };
 
-    const db = admin.firestore();
-    const snapshot = await db
-      .collection("keys")
-      .where("utilizada", "==", false)
-      .limit(1)
-      .get();
-
-    if (snapshot.empty) {
-      console.warn("Nenhuma chave disponível no Firestore.");
+    const queryResponse = await axios.post(queryUrl, query);
+    const found = queryResponse.data.find((doc) => doc.document);
+    if (!found) {
       return res.status(404).send("Nenhuma chave disponível.");
     }
 
-    const doc = snapshot.docs[0];
-    const chave = doc.data().chave;
+    const docName = found.document.name;
+    const chave = found.document.fields.chave.stringValue;
 
-    await doc.ref.update({
-      utilizada: true,
-      order_id,
-      email_cliente: email,
-    });
+    // Atualizar a chave como usada
+    const patchUrl = `https://firestore.googleapis.com/v1/${docName}?updateMask.fieldPaths=utilizada&updateMask.fieldPaths=order_id&updateMask.fieldPaths=email_cliente`;
+    const update = {
+      fields: {
+        utilizada: { booleanValue: true },
+        order_id: { stringValue: order_id },
+        email_cliente: { stringValue: email }
+      }
+    };
 
+    await axios.patch(patchUrl, update);
+
+    // Enviar email
     const msg = {
       to: email,
       from: process.env.EMAIL_FROM,
@@ -74,18 +69,11 @@ module.exports = async (req, res) => {
       `,
     };
 
-    try {
-      await sgMail.send(msg);
-      console.log(`Email enviado para ${email} com a chave ${chave}`);
-      return res.status(200).send("Chave atribuída e email enviado com sucesso.");
-    } catch (sendError) {
-      console.error("Erro ao enviar e-mail via SendGrid:", sendError.response?.body || sendError.message);
-      return res
-        .status(500)
-        .send("Erro ao enviar e-mail: " + JSON.stringify(sendError.response?.body || sendError.message));
-    }
+    await sgMail.send(msg);
+    console.log(`Email enviado para ${email} com a chave ${chave}`);
+    return res.status(200).send("Chave atribuída e email enviado com sucesso.");
   } catch (error) {
-    console.error("Erro geral no webhook:", error);
-    return res.status(500).send("Erro interno: " + error.message);
+    console.error("Erro geral:", error.response?.data || error.message);
+    return res.status(500).send("Erro interno");
   }
 };
