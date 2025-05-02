@@ -1,4 +1,5 @@
 // /api/upload-keys.js
+
 import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
@@ -22,13 +23,17 @@ const db = getFirestore();
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: "Método não permitido" });
+    return res.status(405).json({ error: "Método não permitido. Use POST." });
   }
 
   const { keys } = req.body;
 
-  if (!Array.isArray(keys) || keys.length === 0) {
-    return res.status(400).json({ error: "Lista de chaves inválida" });
+  if (!Array.isArray(keys)) {
+    return res.status(400).json({ error: "Formato inválido. Esperado um array em 'keys'." });
+  }
+
+  if (keys.length === 0) {
+    return res.status(400).json({ error: "A lista de chaves está vazia." });
   }
 
   try {
@@ -36,16 +41,17 @@ export default async function handler(req, res) {
     keys.forEach((chave) => {
       const ref = db.collection('keys').doc(); // ID automático
       batch.set(ref, {
-        chave,
+        chave: String(chave).trim(),
         utilizada: false,
         criado_em: new Date()
       });
     });
+
     await batch.commit();
 
     res.status(200).json({ status: "ok", inseridas: keys.length });
   } catch (error) {
     console.error("Erro ao inserir chaves:", error);
-    res.status(500).json({ error: "Erro ao inserir chaves" });
+    res.status(500).json({ error: "Erro ao inserir chaves", detalhe: error.message });
   }
 }
