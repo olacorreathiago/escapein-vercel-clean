@@ -1,23 +1,8 @@
-// fulfillment.js (Firestore via REST com autenticação via google-auth-library)
+// fulfillment.js (Firestore via REST com acesso público — sem autenticação)
 const fetch = require("node-fetch");
 const sgMail = require("@sendgrid/mail");
-const { GoogleAuth } = require("google-auth-library");
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-
-async function getAccessToken() {
-  const auth = new GoogleAuth({
-    credentials: {
-      client_email: process.env.FIREBASE_CLIENT_EMAIL,
-      private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n")
-    },
-    scopes: ["https://www.googleapis.com/auth/datastore"]
-  });
-
-  const client = await auth.getClient();
-  const tokenResponse = await client.getAccessToken();
-  return tokenResponse.token;
-}
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
@@ -32,7 +17,6 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const accessToken = await getAccessToken();
     const projectId = process.env.FIREBASE_PROJECT_ID;
     const collection = "keys";
 
@@ -55,8 +39,7 @@ module.exports = async (req, res) => {
     const queryResponse = await fetch(queryUrl, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`
+        "Content-Type": "application/json"
       },
       body: JSON.stringify(query),
     });
@@ -84,8 +67,7 @@ module.exports = async (req, res) => {
     await fetch(patchUrl, {
       method: "PATCH",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`
+        "Content-Type": "application/json"
       },
       body: JSON.stringify(update),
     });

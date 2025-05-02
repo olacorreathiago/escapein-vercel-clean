@@ -1,12 +1,11 @@
 {
-  "name": "escapein-api-rest",
+  "name": "escapein-api",
   "version": "1.0.0",
   "scripts": {
     "start": "vercel dev"
   },
   "dependencies": {
-    "google-auth-library": "^9.0.0",
     "@sendgrid/mail": "^7.7.0",
-    "node-fetch": "^2.7.0"
+    "node-fetch": "^2.6.7"
   }
 }
