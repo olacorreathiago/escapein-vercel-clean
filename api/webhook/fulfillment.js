@@ -1,40 +1,22 @@
-// fulfillment.js (Firestore via REST com autenticação JWT)
+// fulfillment.js (Firestore via REST com autenticação via google-auth-library)
 const fetch = require("node-fetch");
 const sgMail = require("@sendgrid/mail");
-const jwt = require("jsonwebtoken");
+const { GoogleAuth } = require("google-auth-library");
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-async function generateAccessToken() {
-  const iat = Math.floor(Date.now() / 1000);
-  const exp = iat + 3600; // 1 hora
-
-  const payload = {
-    iss: process.env.FIREBASE_CLIENT_EMAIL,
-    scope: "https://www.googleapis.com/auth/datastore",
-    aud: "https://oauth2.googleapis.com/token",
-    iat,
-    exp
-  };
-  console.log("CHAVE CARREGADA:", process.env.FIREBASE_PRIVATE_KEY.slice(0, 50));
-  console.log("CHAVE PROCESSADA:", process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n").slice(0, 50));
-
-  const token = jwt.sign(payload, process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"), {
-    algorithm: "RS256",
-    header: { kid: process.env.FIREBASE_PRIVATE_KEY_ID, typ: "JWT", alg: "RS256" }
+async function getAccessToken() {
+  const auth = new GoogleAuth({
+    credentials: {
+      client_email: process.env.FIREBASE_CLIENT_EMAIL,
+      private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n")
+    },
+    scopes: ["https://www.googleapis.com/auth/datastore"]
   });
 
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-      assertion: token
-    })
-  });
-
-  const data = await response.json();
-  return data.access_token;
+  const client = await auth.getClient();
+  const tokenResponse = await client.getAccessToken();
+  return tokenResponse.token;
 }
 
 module.exports = async (req, res) => {
@@ -50,7 +32,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const accessToken = await generateAccessToken();
+    const accessToken = await getAccessToken();
     const projectId = process.env.FIREBASE_PROJECT_ID;
     const collection = "keys";
 

@@ -5,8 +5,8 @@
     "start": "vercel dev"
   },
   "dependencies": {
+    "google-auth-library": "^9.0.0",
     "@sendgrid/mail": "^7.7.0",
-    "jsonwebtoken": "^9.0.2",
     "node-fetch": "^2.7.0"
   }
 }
