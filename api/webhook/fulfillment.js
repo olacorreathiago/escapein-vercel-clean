@@ -1,12 +1,11 @@
-// fulfillment.js (Firestore via REST com acesso público — sem autenticação)
-const fetch = require("node-fetch");
-const sgMail = require("@sendgrid/mail");
+import fetch from 'node-fetch';
+import sgMail from '@sendgrid/mail';
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-module.exports = async (req, res) => {
-  if (req.method !== "POST") {
-    return res.status(405).send("Método não permitido");
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).send('Método não permitido');
   }
 
   const email = req.body.email;
@@ -18,17 +17,16 @@ module.exports = async (req, res) => {
 
   try {
     const projectId = process.env.FIREBASE_PROJECT_ID;
-    const collection = "keys";
+    const collection = 'keys';
 
-    // Buscar uma chave não utilizada
     const queryUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery`;
     const query = {
       structuredQuery: {
         from: [{ collectionId: collection }],
         where: {
           fieldFilter: {
-            field: { fieldPath: "utilizada" },
-            op: "EQUAL",
+            field: { fieldPath: 'utilizada' },
+            op: 'EQUAL',
             value: { booleanValue: false }
           }
         },
@@ -37,24 +35,22 @@ module.exports = async (req, res) => {
     };
 
     const queryResponse = await fetch(queryUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(query),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(query)
     });
 
     const queryData = await queryResponse.json();
     const found = queryData.find((doc) => doc.document);
 
     if (!found) {
-      return res.status(404).send("Nenhuma chave disponível.");
+      return res.status(404).send('Nenhuma chave disponível.');
     }
 
     const docName = found.document.name;
     const chave = found.document.fields.chave.stringValue;
 
-    // Atualizar a chave como usada
+    // Atualiza como usada
     const patchUrl = `https://firestore.googleapis.com/v1/${docName}?updateMask.fieldPaths=utilizada&updateMask.fieldPaths=order_id&updateMask.fieldPaths=email_cliente`;
     const update = {
       fields: {
@@ -65,46 +61,44 @@ module.exports = async (req, res) => {
     };
 
     await fetch(patchUrl, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json"
-      }, 
-      body: JSON.stringify(update),
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(update)
     });
 
-    // Enviar email
+    // Enviar e-mail com a chave
     const msg = {
       to: email,
       from: process.env.EMAIL_FROM,
-      subject: "A sua chave para o Escape Game",
+      subject: 'A sua chave para o Escape Game',
       html: `
         <p>Olá!</p>
         <p>A sua chave é: <strong>${chave}</strong></p>
         <p>Use-a em: <a href="https://app.escapein.pt">app.escapein.pt</a></p>
-      `,
+      `
     };
 
     await sgMail.send(msg);
     console.log(`Email enviado para ${email} com a chave ${chave}`);
 
-    // Verificar se restam menos de 5 chaves disponíveis
+    // Verificar se restam menos de 5 chaves
     const countQuery = {
       structuredQuery: {
         from: [{ collectionId: collection }],
         where: {
           fieldFilter: {
-            field: { fieldPath: "utilizada" },
-            op: "EQUAL",
+            field: { fieldPath: 'utilizada' },
+            op: 'EQUAL',
             value: { booleanValue: false }
           }
-        },
+        }
       }
     };
 
     const countResponse = await fetch(queryUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(countQuery),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(countQuery)
     });
 
     const countData = await countResponse.json();
@@ -114,15 +108,15 @@ module.exports = async (req, res) => {
       await sgMail.send({
         to: process.env.EMAIL_FROM,
         from: process.env.EMAIL_FROM,
-        subject: "⚠️ Alerta: Poucas chaves disponíveis",
+        subject: '⚠️ Alerta: Poucas chaves disponíveis',
         html: `<p>Restam apenas <strong>${remaining}</strong> chaves disponíveis na base de dados Firestore.</p>`
       });
-      console.log("Alerta de baixo estoque de chaves enviado.");
+      console.log('Alerta de baixo estoque de chaves enviado.');
     }
-    console.log(`Email enviado para ${email} com a chave ${chave}`);
-    return res.status(200).send("Chave atribuída e email enviado com sucesso.");
+
+    return res.status(200).send('Chave atribuída e email enviado com sucesso.');
   } catch (error) {
-    console.error("Erro geral:", error);
-    return res.status(500).send("Erro interno");
+    console.error('Erro geral:', error);
+    return res.status(500).send('Erro interno');
   }
-};
+}
