@@ -1,9 +1,8 @@
 // /api/upload-keys.js
 
-const { initializeApp, cert, getApps } = require("firebase-admin/app");
-const { getFirestore } = require("firebase-admin/firestore");
+import { initializeApp, cert, getApps } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 
-// Configuração do Firebase Admin com variáveis de ambiente da Vercel
 const serviceAccount = {
   type: process.env.FIREBASE_TYPE,
   project_id: process.env.FIREBASE_PROJECT_ID,
@@ -17,16 +16,12 @@ const serviceAccount = {
   client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL
 };
 
-// Inicializa o Firebase Admin apenas uma vez
 if (!getApps().length) {
-  initializeApp({
-    credential: cert(serviceAccount),
-  });
+  initializeApp({ credential: cert(serviceAccount) });
 }
-
 const db = getFirestore();
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: "Método não permitido. Use POST." });
   }
@@ -59,4 +54,4 @@ module.exports = async (req, res) => {
     console.error("Erro ao inserir chaves:", error);
     return res.status(500).json({ error: "Erro ao inserir chaves", detalhe: error.message });
   }
-};
+}
