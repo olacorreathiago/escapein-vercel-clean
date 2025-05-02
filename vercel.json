@@ -2,11 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/webhook/fulfillment.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/upload-keys.js",
+      "src": "api/**/*.js",
       "use": "@vercel/node"
     }
   ],
