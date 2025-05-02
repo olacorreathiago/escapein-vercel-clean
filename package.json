@@ -1,11 +1,13 @@
 {
   "name": "escapein-api",
   "version": "1.0.0",
+  "type": "module",
   "scripts": {
     "start": "vercel dev"
   },
   "dependencies": {
     "@sendgrid/mail": "^7.7.0",
-    "node-fetch": "^2.6.7"
+    "node-fetch": "^2.6.7",
+    "firebase-admin": "^11.10.1"
   }
 }
