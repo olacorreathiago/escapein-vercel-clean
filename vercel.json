@@ -1,21 +1,18 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/webhook/fulfillment",
-      "methods": ["POST", "GET"],
-      "dest": "/api/webhook/fulfillment.js"
-    },
-    {
-      "src": "/api/upload-keys",
-      "methods": ["POST"],
-      "dest": "/api/upload-keys.js"
-    }
-  ]
-}
+    "version": 2,
+    "builds": [
+      {
+        "src": "api/**/*.js",
+        "use": "@vercel/node"
+      }
+    ],
+    "routes": [
+        {
+            "src": "/webhook/fulfillment",
+            "methods": ["POST", "GET"],
+            "dest": "/api/webhook/fulfillment.js"
+          }
+          
+    ]
+  }
+  
