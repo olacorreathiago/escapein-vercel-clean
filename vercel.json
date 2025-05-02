@@ -11,6 +11,12 @@
       "src": "/webhook/fulfillment",
       "methods": ["POST", "GET"],
       "dest": "/api/webhook/fulfillment.js"
+    },
+    {
+      "src": "/api/upload-keys",
+      "methods": ["POST"],
+      "dest": "/api/upload-keys.js"
     }
   ]
 }
+
