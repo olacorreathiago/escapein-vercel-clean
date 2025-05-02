@@ -16,6 +16,8 @@ async function generateAccessToken() {
     iat,
     exp
   };
+  console.log("CHAVE CARREGADA:", process.env.FIREBASE_PRIVATE_KEY.slice(0, 50));
+  console.log("CHAVE PROCESSADA:", process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n").slice(0, 50));
 
   const token = jwt.sign(payload, process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"), {
     algorithm: "RS256",
