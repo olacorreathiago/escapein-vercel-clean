@@ -68,7 +68,7 @@ module.exports = async (req, res) => {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json"
-      },
+      }, 
       body: JSON.stringify(update),
     });
 
@@ -85,6 +85,40 @@ module.exports = async (req, res) => {
     };
 
     await sgMail.send(msg);
+    console.log(`Email enviado para ${email} com a chave ${chave}`);
+
+    // Verificar se restam menos de 5 chaves disponíveis
+    const countQuery = {
+      structuredQuery: {
+        from: [{ collectionId: collection }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: "utilizada" },
+            op: "EQUAL",
+            value: { booleanValue: false }
+          }
+        },
+      }
+    };
+
+    const countResponse = await fetch(queryUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(countQuery),
+    });
+
+    const countData = await countResponse.json();
+    const remaining = countData.filter((doc) => doc.document).length;
+
+    if (remaining < 5) {
+      await sgMail.send({
+        to: process.env.EMAIL_FROM,
+        from: process.env.EMAIL_FROM,
+        subject: "⚠️ Alerta: Poucas chaves disponíveis",
+        html: `<p>Restam apenas <strong>${remaining}</strong> chaves disponíveis na base de dados Firestore.</p>`
+      });
+      console.log("Alerta de baixo estoque de chaves enviado.");
+    }
     console.log(`Email enviado para ${email} com a chave ${chave}`);
     return res.status(200).send("Chave atribuída e email enviado com sucesso.");
   } catch (error) {
