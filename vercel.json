@@ -1,18 +1,16 @@
 {
-    "version": 2,
-    "builds": [
-      {
-        "src": "api/webhook/fulfillment.js",
-        "use": "@vercel/node"
-      }
-    ],
-    "routes": [
-        {
-            "src": "/webhook/fulfillment",
-            "methods": ["POST", "GET"],
-            "dest": "/api/webhook/fulfillment.js"
-          }
-          
-    ]
-  }
-  
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/webhook/fulfillment",
+      "methods": ["POST", "GET"],
+      "dest": "/api/webhook/fulfillment.js"
+    }
+  ]
+}
